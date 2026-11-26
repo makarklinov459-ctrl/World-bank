@@ -289,6 +289,24 @@
       document.getElementById('word-count').textContent = words.length;
     }
 
+    async function safeFetch(url, timeoutMs = 7000) {
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        const res = await fetch(url, { signal: controller.signal });
+        clearTimeout(id);
+        if (!res.ok) throw new Error('Сервер ответил ошибкой');
+        return res;
+      } catch (e) {
+        clearTimeout(id);
+        // Повторная попытка через 1 секунду
+        await new Promise(r => setTimeout(r, 1000));
+        const res2 = await fetch(url);
+        if (!res2.ok) throw new Error('Не удалось загрузить данные. Проверь интернет.');
+        return res2;
+      }
+    }
+
     async function addWord() {
       const input = document.getElementById('word-input');
       const word = input.value.trim().toLowerCase();
@@ -300,23 +318,19 @@
       btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Ищу...';
       result.innerHTML = '<div class="text-center py-8 text-gray-400"><i class="fas fa-spinner fa-spin text-3xl"></i></div>';
 
-      const timeout = (ms) => new Promise((_, reject) => setTimeout(() => reject(new Error('Слишком долго, попробуй ещё раз')), ms));
-
       try {
-        const [dictRes, translateRes] = await Promise.race([
-          Promise.all([
-            fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`),
-            fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=ru&dt=t&q=${encodeURIComponent(word)}`)
-          ]),
-          timeout(8000)
-        ]);
-
-        if (!dictRes.ok) throw new Error('Слово не найдено');
+        const dictRes = await safeFetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`);
         const dictData = await dictRes.json();
         const entry = dictData[0];
 
-        const translateData = await translateRes.json();
-        const translation = translateData[0][0][0];
+        let translation = word;
+        try {
+          const translateRes = await safeFetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=ru&dt=t&q=${encodeURIComponent(word)}`);
+          const translateData = await translateRes.json();
+          translation = translateData[0][0][0];
+        } catch(e) {
+          translation = '(перевод недоступен)';
+        }
 
         const phonetic = entry.phonetic || (entry.phonetics?.[0]?.text) || '';
         const audio = entry.phonetics?.find(p => p.audio)?.audio || '';
@@ -339,10 +353,7 @@
         let exampleRu = '';
         if (example) {
           try {
-            const exRes = await Promise.race([
-              fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=ru&dt=t&q=${encodeURIComponent(example)}`),
-              timeout(5000)
-            ]);
+            const exRes = await safeFetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=ru&dt=t&q=${encodeURIComponent(example)}`);
             const exData = await exRes.json();
             exampleRu = exData[0][0][0];
           } catch(e) {}
@@ -382,7 +393,9 @@
         }
       } catch (err) {
         result.innerHTML = `<div class="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl">
-          <i class="fas fa-exclamation-circle mr-2"></i>${err.message || 'Ошибка. Попробуй другое слово.'}
+          <i class="fas fa-exclamation-circle mr-2"></i>
+          ${err.message || 'Ошибка сети. Обнови страницу или попробуй другое слово.'}
+          <br><button onclick="addWord()" class="mt-2 text-sm underline">Попробовать ещё раз</button>
         </div>`;
       } finally {
         btn.disabled = false;
