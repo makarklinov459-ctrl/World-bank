@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Копилка Английских Слов</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    .card { transition: all 0.3s ease; }
+    .card:hover { transform: translateY(-2px); box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); }
+    .fade-in { animation: fadeIn 0.4s ease-in; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .flashcard { perspective: 1000px; }
+    .flashcard-inner { transition: transform 0.6s; transform-style: preserve-3d; }
+    .flashcard.flipped .flashcard-inner { transform: rotateY(180deg); }
+    .flashcard-front, .flashcard-back { backface-visibility: hidden; }
+    .flashcard-back { transform: rotateY(180deg); }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-indigo-50 via-white to-purple-50 min-h-screen">
+  <div class="max-w-5xl mx-auto px-4 py-8">
+    <!-- Header -->
+    <header class="text-center mb-10">
+      <h1 class="text-4xl md:text-5xl font-bold text-indigo-700 mb-2">
+        <i class="fas fa-piggy-bank mr-3"></i>Копилка Слов
+      </h1>
+      <p class="text-gray-600 text-lg">Добавляй английские слова → получай перевод, формы и примеры → учись!</p>
+    </header>
+
+    <!-- Tabs -->
+    <div class="flex flex-wrap justify-center gap-2 mb-8">
+      <button onclick="showTab('add')" id="tab-add" class="tab-btn px-6 py-3 rounded-full font-medium bg-indigo-600 text-white shadow-md">
+        <i class="fas fa-plus mr-2"></i>Добавить
+      </button>
+      <button onclick="showTab('bank')" id="tab-bank" class="tab-btn px-6 py-3 rounded-full font-medium bg-white text-gray-700 border border-gray-200 hover:bg-gray-50">
+        <i class="fas fa-wallet mr-2"></i>Копилка <span id="word-count" class="ml-1 bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full text-sm">0</span>
+      </button>
+      <button onclick="showTab('learn')" id="tab-learn" class="tab-btn px-6 py-3 rounded-full font-medium bg-white text-gray-700 border border-gray-200 hover:bg-gray-50">
+        <i class="fas fa-graduation-cap mr-2"></i>Учить
+      </button>
+    </div>
+
+    <!-- Add Tab -->
+    <div id="section-add" class="tab-section">
+      <div class="bg-white rounded-2xl shadow-lg p-6 md:p-8 max-w-2xl mx-auto">
+        <h2 class="text-2xl font-semibold text-gray-800 mb-6">Добавить новое слово</h2>
+        <div class="flex gap-3">
+          <input id="word-input" type="text" placeholder="Например: go, beautiful, run..." 
+                 class="flex-1 px-5 py-4 text-lg border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                 onkeypress="if(event.key==='Enter') addWord()">
+          <button onclick="addWord()" id="add-btn" class="px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-xl transition flex items-center gap-2">
+            <i class="fas fa-search"></i> Найти
+          </button>
+        </div>
+        <div id="result" class="mt-8"></div>
+      </div>
+    </div>
+
+    <!-- Bank Tab -->
+    <div id="section-bank" class="tab-section hidden">
+      <div class="bg-white rounded-2xl shadow-lg p-6">
+        <div class="flex justify-between items-center mb-6">
+          <h2 class="text-2xl font-semibold text-gray-800">Моя копилка</h2>
+          <div class="flex gap-2">
+            <button onclick="exportWords()" class="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg">
+              <i class="fas fa-download mr-1"></i> Экспорт
+            </button>
+            <button onclick="document.getElementById('import-file').click()" class="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded-lg">
+              <i class="fas fa-upload mr-1"></i> Импорт
+            </button>
+            <input type="file" id="import-file" accept=".json" class="hidden" onchange="importWords(event)">
+          </div>
+        </div>
+        <input id="search-bank" type="text" placeholder="Поиск по словам..." 
+               class="w-full px-4 py-3 border border-gray-300 rounded-xl mb-6 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+               oninput="renderBank()">
+        <div id="bank-list" class="space-y-3"></div>
+        <div id="empty-bank" class="text-center py-16 text-gray-400 hidden">
+          <i class="fas fa-piggy-bank text-6xl mb-4"></i>
+          <p class="text-lg">Копилка пуста. Добавь первое слово!</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Learn Tab -->
+    <div id="section-learn" class="tab-section hidden">
+      <div class="bg-white rounded-2xl shadow-lg p-6 md:p-8">
+        <h2 class="text-2xl font-semibold text-gray-800 mb-6 text-center">Режим обучения</h2>
+        <div id="learn-content" class="text-center">
+          <p class="text-gray-500 mb-6">Добавь слова в копилку, чтобы начать учить!</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ========== Irregular Verbs ==========
+    const irregularVerbs = {
+      "be": ["was/were", "been"],
+      "become": ["became", "become"],
+      "begin": ["began", "begun"],
+      "break": ["broke", "broken"],
+      "bring": ["brought", "brought"],
+      "buy": ["bought", "bought"],
+      "catch": ["caught", "caught"],
+      "choose": ["chose", "chosen"],
+      "come": ["came", "come"],
+      "do": ["did", "done"],
+      "drink": ["drank", "drunk"],
+      "drive": ["drove", "driven"],
+      "eat": ["ate", "eaten"],
+      "fall": ["fell", "fallen"],
+      "feel": ["felt", "felt"],
+      "find": ["found", "found"],
+      "fly": ["flew", "flown"],
+      "forget": ["forgot", "forgotten"],
+      "get": ["got", "got/gotten"],
+      "give": ["gave", "given"],
+      "go": ["went", "gone"],
+      "grow": ["grew", "grown"],
+      "have": ["had", "had"],
+      "hear": ["heard", "heard"],
+      "hide": ["hid", "hidden"],
+      "hold": ["held", "held"],
+      "keep": ["kept", "kept"],
+      "know": ["knew", "known"],
+      "leave": ["left", "left"],
+      "lose": ["lost", "lost"],
+      "make": ["made", "made"],
+      "meet": ["met", "met"],
+      "pay": ["paid", "paid"],
+      "put": ["put", "put"],
+      "read": ["read", "read"],
+      "ride": ["rode", "ridden"],
+      "run": ["ran", "run"],
+      "say": ["said", "said"],
+      "see": ["saw", "seen"],
+      "sell": ["sold", "sold"],
+      "send": ["sent", "sent"],
+      "show": ["showed", "shown"],
+      "sing": ["sang", "sung"],
+      "sit": ["sat", "sat"],
+      "sleep": ["slept", "slept"],
+      "speak": ["spoke", "spoken"],
+      "spend": ["spent", "spent"],
+      "stand": ["stood", "stood"],
+      "swim": ["swam", "swum"],
+      "take": ["took", "taken"],
+      "teach": ["taught", "taught"],
+      "tell": ["told", "told"],
+      "think": ["thought", "thought"],
+      "understand": ["understood", "understood"],
+      "wear": ["wore", "worn"],
+      "win": ["won", "won"],
+      "write": ["wrote", "written"]
+    };
+
+    let words = JSON.parse(localStorage.getItem('wordBank') || '[]');
+    let currentLearnIndex = 0;
+    let learnMode = 'flashcard'; // flashcard or quiz
+
+    // ========== Init ==========
+    updateWordCount();
+    showTab('add');
+
+    function showTab(tab) {
+      document.querySelectorAll('.tab-section').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.tab-btn').forEach(el => {
+        el.classList.remove('bg-indigo-600', 'text-white', 'shadow-md');
+        el.classList.add('bg-white', 'text-gray-700', 'border', 'border-gray-200');
+      });
+      document.getElementById(`section-${tab}`).classList.remove('hidden');
+      const btn = document.getElementById(`tab-${tab}`);
+      btn.classList.add('bg-indigo-600', 'text-white', 'shadow-md');
+      btn.classList.remove('bg-white', 'text-gray-700', 'border', 'border-gray-200');
+
+      if (tab === 'bank') renderBank();
+      if (tab === 'learn') startLearning();
+    }
+
+    function updateWordCount() {
+      document.getElementById('word-count').textContent = words.length;
+    }
+
+    // ========== Add Word ==========
+    async function addWord() {
+      const input = document.getElementById('word-input');
+      const word = input.value.trim().toLowerCase();
+      if (!word) return alert('Введи слово!');
+
+      const btn = document.getElementById('add-btn');
+      const result = document.getElementById('result');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Ищу...';
+      result.innerHTML = '<div class="text-center py-8 text-gray-400"><i class="fas fa-spinner fa-spin text-3xl"></i></div>';
+
+      try {
+        // Fetch dictionary
+        const dictRes = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`);
+        if (!dictRes.ok) throw new Error('Слово не найдено');
+        const dictData = await dictRes.json();
+        const entry = dictData[0];
+
+        // Translate word
+        const translateRes = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=ru&dt=t&q=${encodeURIComponent(word)}`);
+        const translateData = await translateRes.json();
+        const translation = translateData[0][0][0];
+
+        // Extract info
+        const phonetic = entry.phonetic || (entry.phonetics?.[0]?.text) || '';
+        const audio = entry.phonetics?.find(p => p.audio)?.audio || '';
+        
+        let meanings = [];
+        let example = '';
+        let isVerb = false;
+        
+        for (const m of entry.meanings) {
+          const def = m.definitions[0];
+          meanings.push({
+            pos: m.partOfSpeech,
+            definition: def.definition,
+            example: def.example || ''
+          });
+          if (m.partOfSpeech === 'verb') isVerb = true;
+          if (!example && def.example) example = def.example;
+        }
+
+        // Translate example if exists
+        let exampleRu = '';
+        if (example) {
+          try {
+            const exRes = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=ru&dt=t&q=${encodeURIComponent(example)}`);
+            const exData = await exRes.json();
+            exampleRu = exData[0][0][0];
+          } catch(e) {}
+        }
+
+        // Verb forms
+        let forms = null;
+        if (isVerb || irregularVerbs[word]) {
+          if (irregularVerbs[word]) {
+            forms = { base: word, past: irregularVerbs[word][0], participle: irregularVerbs[word][1], type: 'неправильный' };
+          } else {
+            // Simple regular
+            const past = word.endsWith('e') ? word + 'd' : word + 'ed';
+            forms = { base: word, past: past, participle: past, type: 'правильный' };
+          }
+        }
+
+        const wordObj = {
+          id: Date.now(),
+          word,
+          translation,
+          phonetic,
+          audio,
+          meanings: meanings.slice(0, 3),
+          example,
+          exampleRu,
+          forms,
+          addedAt: new Date().toISOString()
+        };
+
+        // Check if already exists
+        if (words.some(w => w.word === word)) {
+          result.innerHTML = `<div class="bg-yellow-50 border border-yellow-200 text-yellow-800 p-4 rounded-xl">Это слово уже есть в копилке!</div>`;
+        } else {
+          words.push(wordObj);
+          localStorage.setItem('wordBank', JSON.stringify(words));
+          updateWordCount();
+          renderResult(wordObj, true);
+        }
+      } catch (err) {
+        result.innerHTML = `<div class="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl">
+          <i class="fas fa-exclamation-circle mr-2"></i>${err.message || 'Ошибка. Попробуй другое слово.'}
+        </div>`;
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-search"></i> Найти';
+        input.value = '';
+        input.focus();
+      }
+    }
+
+    function renderResult(w, isNew = false) {
+      const result = document.getElementById('result');
+      let formsHtml = '';
+      if (w.forms) {
+        formsHtml = `
+          <div class="mt-4 p-4 bg-indigo-50 rounded-xl">
+            <div class="font-medium text-indigo-800 mb-2">
+              <i class="fas fa-exchange-alt mr-1"></i> Формы глагола (${w.forms.type})
+            </div>
+            <div class="grid grid-cols-3 gap-2 text-center">
+              <div class="bg-white p-2 rounded-lg"><div class="text-xs text-gray-500">Infinitive</div><div class="font-semibold">${w.forms.base}</div></div>
+              <div class="bg-white p-2 rounded-lg"><div class="text-xs text-gray-500">Past</div><div class="font-semibold">${w.forms.past}</div></div>
+              <div class="bg-white p-2 rounded-lg"><div class="text-xs text-gray-500">Past Participle</div><div class="font-semibold">${w.forms.participle}</div></div>
+            </div>
+          </div>`;
+      }
+
+      let meaningsHtml = w.meanings.map(m => `
+        <div class="mb-2">
+          <span class="inline-block px-2 py-0.5 bg-purple-100 text-purple-700 text-xs rounded-full font-medium">${m.pos}</span>
+          <span class="ml-2 text-gray-700">${m.definition}</span>
+        </div>
+      `).join('');
+
+      result.innerHTML = `
+        <div class="card bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100 rounded-2xl p-6 fade-in">
+          ${isNew ? '<div class="text-green-600 text-sm mb-3"><i class="fas fa-check-circle mr-1"></i> Добавлено в копилку!</div>' : ''}
+          <div class="flex items-start justify-between">
+            <div>
+              <h3 class="text-3xl font-bold text-gray-800">${w.word}</h3>
+              ${w.phonetic ? `<div class="text-gray-500 text-lg">${w.phonetic}</div>` : ''}
+            </div>
+            ${w.audio ? `<button onclick="playAudio('${w.audio}')" class="w-12 h-12 bg-indigo-600 text-white rounded-full hover:bg-indigo-700 flex items-center justify-center"><i class="fas fa-volume-up"></i></button>` : ''}
+          </div>
+          <div class="mt-4 text-2xl font-semibold text-indigo-600">${w.translation}</div>
+          <div class="mt-4">${meaningsHtml}</div>
+          ${w.example ? `
+            <div class="mt-4 p-4 bg-white rounded-xl border">
+              <div class="text-sm text-gray-500 mb-1">Пример:</div>
+              <div class="italic text-gray-800">"${w.example}"</div>
+              ${w.exampleRu ? `<div class="text-gray-600 mt-1">→ ${w.exampleRu}</div>` : ''}
+            </div>` : ''}
+          ${formsHtml}
+        </div>
+      `;
+    }
+
+    function playAudio(url) {
+      new Audio(url).play();
+    }
+
+    // ========== Bank ==========
+    function renderBank() {
+      const list = document.getElementById('bank-list');
+      const empty = document.getElementById('empty-bank');
+      const search = document.getElementById('search-bank').value.toLowerCase();
+      const filtered = words.filter(w => w.word.includes(search) || w.translation.toLowerCase().includes(search));
+
+      if (filtered.length === 0) {
+        list.innerHTML = '';
+        empty.classList.remove('hidden');
+        return;
+      }
+      empty.classList.add('hidden');
+
+      list.innerHTML = filtered.map(w => `
+        <div class="card bg-white border border-gray-200 rounded-xl p-4 flex items-center justify-between hover:border-indigo-300">
+          <div class="flex-1 cursor-pointer" onclick="showWordDetail(${w.id})">
+            <div class="flex items-center gap-3">
+              <div class="text-xl font-semibold text-gray-800">${w.word}</div>
+              <div class="text-indigo-600 font-medium">${w.translation}</div>
+            </div>
+            ${w.forms ? `<div class="text-xs text-gray-500 mt-1">${w.forms.base} / ${w.forms.past} / ${w.forms.participle}</div>` : ''}
+          </div>
+          <button onclick="deleteWord(${w.id})" class="ml-4 text-red-400 hover:text-red-600 p-2">
+            <i class="fas fa-trash"></i>
+          </button>
+        </div>
+      `).join('');
+    }
+
+    function showWordDetail(id) {
+      const w = words.find(x => x.id === id);
+      if (w) {
+        showTab('add');
+        document.getElementById('word-input').value = w.word;
+        renderResult(w, false);
+      }
+    }
+
+    function deleteWord(id) {
+      if (confirm('Удалить слово из копилки?')) {
+        words = words.filter(w => w.id !== id);
+        localStorage.setItem('wordBank', JSON.stringify(words));
+        updateWordCount();
+        renderBank();
+      }
+    }
+
+    function exportWords() {
+      const blob = new Blob([JSON.stringify(words, null, 2)], {type: 'application/json'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'word-bank.json';
+      a.click();
+    }
+
+    function importWords(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(ev) {
+        try {
+          const imported = JSON.parse(ev.target.result);
+          if (Array.isArray(imported)) {
+            words = imported;
+            localStorage.setItem('wordBank', JSON.stringify(words));
+            updateWordCount();
+            renderBank();
+            alert(`Импортировано ${imported.length} слов!`);
+          }
+        } catch(err) {
+          alert('Ошибка чтения файла');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    // ========== Learn ==========
+    function startLearning() {
+      const content = document.getElementById('learn-content');
+      if (words.length === 0) {
+        content.innerHTML = '<p class="text-gray-500 py-12 text-lg">Добавь слова в копилку, чтобы начать учить!</p>';
+        return;
+      }
+      currentLearnIndex = 0;
+      showFlashcard();
+    }
+
+    function showFlashcard() {
+      const w = words[currentLearnIndex % words.length];
+      const content = document.getElementById('learn-content');
+      content.innerHTML = `
+        <div class="mb-6">
+          <span class="text-sm text-gray-500">Слово ${currentLearnIndex % words.length + 1} из ${words.length}</span>
+        </div>
+        <div class="flashcard max-w-lg mx-auto mb-8 cursor-pointer" onclick="this.classList.toggle('flipped')">
+          <div class="flashcard-inner relative h-64">
+            <div class="flashcard-front absolute inset-0 bg-gradient-to-br from-indigo-500 to-purple-600 text-white rounded-2xl flex flex-col items-center justify-center p-6 shadow-xl">
+              <div class="text-4xl font-bold mb-2">${w.word}</div>
+              ${w.phonetic ? `<div class="text-indigo-200 text-xl">${w.phonetic}</div>` : ''}
+              <div class="mt-6 text-sm opacity-75">Нажми, чтобы перевернуть</div>
+            </div>
+            <div class="flashcard-back absolute inset-0 bg-white border-2 border-indigo-200 rounded-2xl flex flex-col items-center justify-center p-6 shadow-xl">
+              <div class="text-3xl font-bold text-indigo-600 mb-3">${w.translation}</div>
+              ${w.forms ? `<div class="text-sm text-gray-600 mb-2">${w.forms.base} — ${w.forms.past} — ${w.forms.participle}</div>` : ''}
+              ${w.example ? `<div class="text-sm italic text-gray-700 text-center">"${w.example}"</div>` : ''}
+            </div>
+          </div>
+        </div>
+        <div class="flex justify-center gap-4">
+          <button onclick="prevCard()" class="px-6 py-3 bg-gray-200 hover:bg-gray-300 rounded-xl font-medium">
+            <i class="fas fa-arrow-left mr-2"></i>Назад
+          </button>
+          <button onclick="nextCard()" class="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-medium">
+            Дальше <i class="fas fa-arrow-right ml-2"></i>
+          </button>
+        </div>
+        <div class="mt-8">
+          <button onclick="shuffleAndStart()" class="text-indigo-600 hover:underline text-sm">
+            <i class="fas fa-random mr-1"></i> Перемешать
+          </button>
+        </div>
+      `;
+    }
+
+    function nextCard() {
+      currentLearnIndex++;
+      showFlashcard();
+    }
+
+    function prevCard() {
+      currentLearnIndex = Math.max(0, currentLearnIndex - 1);
+      showFlashcard();
+    }
+
+    function shuffleAndStart() {
+      words = words.sort(() => Math.random() - 0.5);
+      currentLearnIndex = 0;
+      showFlashcard();
+    }
+  </script>
+</body>
+</html>
