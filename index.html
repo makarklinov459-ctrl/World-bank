@@ -6,9 +6,30 @@
   <title>Копилка Английских Слов</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import { getFirestore, doc, setDoc, getDoc, collection, addDoc, query, where, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAzJ_cJTt82L7-PQwqgSVVKHaTAWRQvq54",
+      authDomain: "word-bank-52.firebaseapp.com",
+      projectId: "word-bank-52",
+      storageBucket: "word-bank-52.firebasestorage.app",
+      messagingSenderId: "91026109506",
+      appId: "1:91026109506:web:087fb4b9b9c6c72a93e9db",
+      measurementId: "G-PQJJVW88LB"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    window.firebase = { auth, db, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, doc, setDoc, getDoc, collection, addDoc, query, where, getDocs, deleteDoc };
+  </script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-    body { font-family: 'Inter', sans-serif; }
+    body { font-family: 'Inter', sans-serif; transition: background 0.3s, color 0.3s; }
     .card { transition: all 0.3s ease; }
     .card:hover { transform: translateY(-2px); box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); }
     .fade-in { animation: fadeIn 0.4s ease-in; }
@@ -18,9 +39,55 @@
     .flashcard.flipped .flashcard-inner { transform: rotateY(180deg); }
     .flashcard-front, .flashcard-back { backface-visibility: hidden; }
     .flashcard-back { transform: rotateY(180deg); }
+    .side-panel { transform: translateX(100%); transition: transform 0.3s ease; }
+    .side-panel.open { transform: translateX(0); }
+    .dark body { background: #0f172a; color: #e2e8f0; }
+    .dark .bg-white { background: #1e293b !important; }
+    .dark .text-gray-800 { color: #f1f5f9 !important; }
+    .dark .text-gray-600, .dark .text-gray-500, .dark .text-gray-700 { color: #94a3b8 !important; }
+    .dark .border-gray-200, .dark .border-gray-300 { border-color: #334155 !important; }
+    .dark .bg-indigo-50 { background: #1e1b4b !important; }
+    .dark .from-indigo-50 { --tw-gradient-from: #1e1b4b; }
   </style>
 </head>
 <body class="bg-gradient-to-br from-indigo-50 via-white to-purple-50 min-h-screen">
+  <!-- Side Panel Button -->
+  <button onclick="togglePanel()" class="fixed top-6 right-6 z-40 w-14 h-14 bg-indigo-600 text-white rounded-full shadow-lg hover:bg-indigo-700 flex items-center justify-center text-xl">
+    <i class="fas fa-bars"></i>
+  </button>
+
+  <!-- Side Panel -->
+  <div id="side-panel" class="side-panel fixed top-0 right-0 h-full w-80 bg-white shadow-2xl z-50 p-6 overflow-y-auto border-l">
+    <div class="flex justify-between items-center mb-6">
+      <h2 class="text-xl font-bold">Настройки</h2>
+      <button onclick="togglePanel()" class="text-2xl text-gray-500">&times;</button>
+    </div>
+
+    <div id="panel-auth" class="mb-8">
+      <div id="auth-logged-out">
+        <h3 class="font-semibold mb-3">Аккаунт</h3>
+        <input id="auth-email" type="email" placeholder="Email" class="w-full px-3 py-2 border rounded-lg mb-2 text-sm">
+        <input id="auth-password" type="password" placeholder="Пароль" class="w-full px-3 py-2 border rounded-lg mb-3 text-sm">
+        <button onclick="handleAuth(false)" class="w-full bg-indigo-600 text-white py-2 rounded-lg text-sm mb-2">Войти</button>
+        <button onclick="handleAuth(true)" class="w-full bg-gray-200 py-2 rounded-lg text-sm">Зарегистрироваться</button>
+      </div>
+      <div id="auth-logged-in" class="hidden">
+        <p class="text-sm mb-3">Вошли как:<br><strong id="user-email"></strong></p>
+        <button onclick="logout()" class="w-full bg-red-500 text-white py-2 rounded-lg text-sm">Выйти</button>
+      </div>
+    </div>
+
+    <div class="mb-6">
+      <h3 class="font-semibold mb-3">Тема</h3>
+      <div class="flex gap-2">
+        <button onclick="setTheme('light')" class="flex-1 py-2 rounded-lg border text-sm">Светлая</button>
+        <button onclick="setTheme('dark')" class="flex-1 py-2 rounded-lg border text-sm bg-gray-800 text-white">Тёмная</button>
+      </div>
+    </div>
+
+    <p class="text-xs text-gray-400 mt-10">Копилка Слов • v2</p>
+  </div>
+
   <div class="max-w-5xl mx-auto px-4 py-8">
     <!-- Header -->
     <header class="text-center mb-10">
@@ -40,6 +107,9 @@
       </button>
       <button onclick="showTab('learn')" id="tab-learn" class="tab-btn px-6 py-3 rounded-full font-medium bg-white text-gray-700 border border-gray-200 hover:bg-gray-50">
         <i class="fas fa-graduation-cap mr-2"></i>Учить
+      </button>
+      <button onclick="showTab('stats')" id="tab-stats" class="tab-btn px-6 py-3 rounded-full font-medium bg-white text-gray-700 border border-gray-200 hover:bg-gray-50">
+        <i class="fas fa-chart-bar mr-2"></i>Статистика
       </button>
     </div>
 
@@ -89,82 +159,133 @@
     <div id="section-learn" class="tab-section hidden">
       <div class="bg-white rounded-2xl shadow-lg p-6 md:p-8">
         <h2 class="text-2xl font-semibold text-gray-800 mb-6 text-center">Режим обучения</h2>
-        <div id="learn-content" class="text-center">
-          <p class="text-gray-500 mb-6">Добавь слова в копилку, чтобы начать учить!</p>
-        </div>
+        <div id="learn-content" class="text-center"></div>
+      </div>
+    </div>
+
+    <!-- Stats Tab -->
+    <div id="section-stats" class="tab-section hidden">
+      <div class="bg-white rounded-2xl shadow-lg p-6 md:p-8">
+        <h2 class="text-2xl font-semibold text-gray-800 mb-6 text-center">Статистика</h2>
+        <div id="stats-content" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
       </div>
     </div>
   </div>
 
   <script>
-    // ========== Irregular Verbs ==========
     const irregularVerbs = {
-      "be": ["was/were", "been"],
-      "become": ["became", "become"],
-      "begin": ["began", "begun"],
-      "break": ["broke", "broken"],
-      "bring": ["brought", "brought"],
-      "buy": ["bought", "bought"],
-      "catch": ["caught", "caught"],
-      "choose": ["chose", "chosen"],
-      "come": ["came", "come"],
-      "do": ["did", "done"],
-      "drink": ["drank", "drunk"],
-      "drive": ["drove", "driven"],
-      "eat": ["ate", "eaten"],
-      "fall": ["fell", "fallen"],
-      "feel": ["felt", "felt"],
-      "find": ["found", "found"],
-      "fly": ["flew", "flown"],
-      "forget": ["forgot", "forgotten"],
-      "get": ["got", "got/gotten"],
-      "give": ["gave", "given"],
-      "go": ["went", "gone"],
-      "grow": ["grew", "grown"],
-      "have": ["had", "had"],
-      "hear": ["heard", "heard"],
-      "hide": ["hid", "hidden"],
-      "hold": ["held", "held"],
-      "keep": ["kept", "kept"],
-      "know": ["knew", "known"],
-      "leave": ["left", "left"],
-      "lose": ["lost", "lost"],
-      "make": ["made", "made"],
-      "meet": ["met", "met"],
-      "pay": ["paid", "paid"],
-      "put": ["put", "put"],
-      "read": ["read", "read"],
-      "ride": ["rode", "ridden"],
-      "run": ["ran", "run"],
-      "say": ["said", "said"],
-      "see": ["saw", "seen"],
-      "sell": ["sold", "sold"],
-      "send": ["sent", "sent"],
-      "show": ["showed", "shown"],
-      "sing": ["sang", "sung"],
-      "sit": ["sat", "sat"],
-      "sleep": ["slept", "slept"],
-      "speak": ["spoke", "spoken"],
-      "spend": ["spent", "spent"],
-      "stand": ["stood", "stood"],
-      "swim": ["swam", "swum"],
-      "take": ["took", "taken"],
-      "teach": ["taught", "taught"],
-      "tell": ["told", "told"],
-      "think": ["thought", "thought"],
-      "understand": ["understood", "understood"],
-      "wear": ["wore", "worn"],
-      "win": ["won", "won"],
-      "write": ["wrote", "written"]
+      "be": ["was/were", "been"], "become": ["became", "become"], "begin": ["began", "begun"],
+      "break": ["broke", "broken"], "bring": ["brought", "brought"], "buy": ["bought", "bought"],
+      "catch": ["caught", "caught"], "choose": ["chose", "chosen"], "come": ["came", "come"],
+      "do": ["did", "done"], "drink": ["drank", "drunk"], "drive": ["drove", "driven"],
+      "eat": ["ate", "eaten"], "fall": ["fell", "fallen"], "feel": ["felt", "felt"],
+      "find": ["found", "found"], "fly": ["flew", "flown"], "forget": ["forgot", "forgotten"],
+      "get": ["got", "got/gotten"], "give": ["gave", "given"], "go": ["went", "gone"],
+      "grow": ["grew", "grown"], "have": ["had", "had"], "hear": ["heard", "heard"],
+      "hide": ["hid", "hidden"], "hold": ["held", "held"], "keep": ["kept", "kept"],
+      "know": ["knew", "known"], "leave": ["left", "left"], "lose": ["lost", "lost"],
+      "make": ["made", "made"], "meet": ["met", "met"], "pay": ["paid", "paid"],
+      "put": ["put", "put"], "read": ["read", "read"], "ride": ["rode", "ridden"],
+      "run": ["ran", "run"], "say": ["said", "said"], "see": ["saw", "seen"],
+      "sell": ["sold", "sold"], "send": ["sent", "sent"], "show": ["showed", "shown"],
+      "sing": ["sang", "sung"], "sit": ["sat", "sat"], "sleep": ["slept", "slept"],
+      "speak": ["spoke", "spoken"], "spend": ["spent", "spent"], "stand": ["stood", "stood"],
+      "swim": ["swam", "swum"], "take": ["took", "taken"], "teach": ["taught", "taught"],
+      "tell": ["told", "told"], "think": ["thought", "thought"], "understand": ["understood", "understood"],
+      "wear": ["wore", "worn"], "win": ["won", "won"], "write": ["wrote", "written"]
     };
 
-    let words = JSON.parse(localStorage.getItem('wordBank') || '[]');
+    let words = [];
+    let reviews = {};
+    let currentUser = null;
     let currentLearnIndex = 0;
-    let learnMode = 'flashcard'; // flashcard or quiz
 
-    // ========== Init ==========
-    updateWordCount();
-    showTab('add');
+    window.addEventListener('load', () => {
+      const savedTheme = localStorage.getItem('theme') || 'light';
+      setTheme(savedTheme);
+      setTimeout(initAuth, 500);
+    });
+
+    function togglePanel() {
+      document.getElementById('side-panel').classList.toggle('open');
+    }
+
+    function setTheme(theme) {
+      if (theme === 'dark') {
+        document.documentElement.classList.add('dark');
+        document.body.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+        document.body.classList.remove('dark');
+      }
+      localStorage.setItem('theme', theme);
+    }
+
+    function initAuth() {
+      if (!window.firebase) return setTimeout(initAuth, 200);
+      const { onAuthStateChanged, auth } = window.firebase;
+      onAuthStateChanged(auth, async (user) => {
+        currentUser = user;
+        updateAuthUI();
+        if (user) {
+          await loadWordsFromCloud();
+        } else {
+          words = JSON.parse(localStorage.getItem('wordBank') || '[]');
+          reviews = JSON.parse(localStorage.getItem('wordReviews') || '{}');
+        }
+        updateWordCount();
+        if (document.getElementById('section-bank') && !document.getElementById('section-bank').classList.contains('hidden')) renderBank();
+      });
+    }
+
+    function updateAuthUI() {
+      if (currentUser) {
+        document.getElementById('auth-logged-out').classList.add('hidden');
+        document.getElementById('auth-logged-in').classList.remove('hidden');
+        document.getElementById('user-email').textContent = currentUser.email;
+      } else {
+        document.getElementById('auth-logged-out').classList.remove('hidden');
+        document.getElementById('auth-logged-in').classList.add('hidden');
+      }
+    }
+
+    async function handleAuth(register) {
+      const email = document.getElementById('auth-email').value.trim();
+      const password = document.getElementById('auth-password').value;
+      if (!email || !password) return alert('Заполни все поля');
+      try {
+        const { createUserWithEmailAndPassword, signInWithEmailAndPassword, auth } = window.firebase;
+        if (register) {
+          await createUserWithEmailAndPassword(auth, email, password);
+        } else {
+          await signInWithEmailAndPassword(auth, email, password);
+        }
+        togglePanel();
+      } catch (e) {
+        alert('Ошибка: ' + e.message);
+      }
+    }
+
+    async function logout() {
+      await window.firebase.signOut(window.firebase.auth);
+      togglePanel();
+    }
+
+    async function loadWordsFromCloud() {
+      if (!currentUser) return;
+      const { collection, query, where, getDocs, db } = window.firebase;
+      const q = query(collection(db, 'words'), where('uid', '==', currentUser.uid));
+      const snap = await getDocs(q);
+      words = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      reviews = {};
+    }
+
+    async function saveWordToCloud(wordObj) {
+      if (!currentUser) return;
+      const { collection, addDoc, db } = window.firebase;
+      const docRef = await addDoc(collection(db, 'words'), { ...wordObj, uid: currentUser.uid });
+      wordObj.id = docRef.id;
+    }
 
     function showTab(tab) {
       document.querySelectorAll('.tab-section').forEach(el => el.classList.add('hidden'));
@@ -179,13 +300,13 @@
 
       if (tab === 'bank') renderBank();
       if (tab === 'learn') startLearning();
+      if (tab === 'stats') renderStats();
     }
 
     function updateWordCount() {
       document.getElementById('word-count').textContent = words.length;
     }
 
-    // ========== Add Word ==========
     async function addWord() {
       const input = document.getElementById('word-input');
       const word = input.value.trim().toLowerCase();
@@ -198,18 +319,15 @@
       result.innerHTML = '<div class="text-center py-8 text-gray-400"><i class="fas fa-spinner fa-spin text-3xl"></i></div>';
 
       try {
-        // Fetch dictionary
         const dictRes = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`);
         if (!dictRes.ok) throw new Error('Слово не найдено');
         const dictData = await dictRes.json();
         const entry = dictData[0];
 
-        // Translate word
         const translateRes = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=ru&dt=t&q=${encodeURIComponent(word)}`);
         const translateData = await translateRes.json();
         const translation = translateData[0][0][0];
 
-        // Extract info
         const phonetic = entry.phonetic || (entry.phonetics?.[0]?.text) || '';
         const audio = entry.phonetics?.find(p => p.audio)?.audio || '';
         
@@ -228,7 +346,6 @@
           if (!example && def.example) example = def.example;
         }
 
-        // Translate example if exists
         let exampleRu = '';
         if (example) {
           try {
@@ -238,20 +355,17 @@
           } catch(e) {}
         }
 
-        // Verb forms
         let forms = null;
         if (isVerb || irregularVerbs[word]) {
           if (irregularVerbs[word]) {
             forms = { base: word, past: irregularVerbs[word][0], participle: irregularVerbs[word][1], type: 'неправильный' };
           } else {
-            // Simple regular
             const past = word.endsWith('e') ? word + 'd' : word + 'ed';
             forms = { base: word, past: past, participle: past, type: 'правильный' };
           }
         }
 
         const wordObj = {
-          id: Date.now(),
           word,
           translation,
           phonetic,
@@ -263,12 +377,16 @@
           addedAt: new Date().toISOString()
         };
 
-        // Check if already exists
         if (words.some(w => w.word === word)) {
           result.innerHTML = `<div class="bg-yellow-50 border border-yellow-200 text-yellow-800 p-4 rounded-xl">Это слово уже есть в копилке!</div>`;
         } else {
+          if (currentUser) {
+            await saveWordToCloud(wordObj);
+          } else {
+            wordObj.id = Date.now();
+            localStorage.setItem('wordBank', JSON.stringify(words));
+          }
           words.push(wordObj);
-          localStorage.setItem('wordBank', JSON.stringify(words));
           updateWordCount();
           renderResult(wordObj, true);
         }
@@ -301,7 +419,7 @@
           </div>`;
       }
 
-      let meaningsHtml = w.meanings.map(m => `
+      let meaningsHtml = (w.meanings || []).map(m => `
         <div class="mb-2">
           <span class="inline-block px-2 py-0.5 bg-purple-100 text-purple-700 text-xs rounded-full font-medium">${m.pos}</span>
           <span class="ml-2 text-gray-700">${m.definition}</span>
@@ -335,12 +453,11 @@
       new Audio(url).play();
     }
 
-    // ========== Bank ==========
     function renderBank() {
       const list = document.getElementById('bank-list');
       const empty = document.getElementById('empty-bank');
       const search = document.getElementById('search-bank').value.toLowerCase();
-      const filtered = words.filter(w => w.word.includes(search) || w.translation.toLowerCase().includes(search));
+      const filtered = words.filter(w => w.word.includes(search) || (w.translation || '').toLowerCase().includes(search));
 
       if (filtered.length === 0) {
         list.innerHTML = '';
@@ -351,14 +468,14 @@
 
       list.innerHTML = filtered.map(w => `
         <div class="card bg-white border border-gray-200 rounded-xl p-4 flex items-center justify-between hover:border-indigo-300">
-          <div class="flex-1 cursor-pointer" onclick="showWordDetail(${w.id})">
+          <div class="flex-1 cursor-pointer" onclick="showWordDetail('${w.id}')">
             <div class="flex items-center gap-3">
               <div class="text-xl font-semibold text-gray-800">${w.word}</div>
               <div class="text-indigo-600 font-medium">${w.translation}</div>
             </div>
             ${w.forms ? `<div class="text-xs text-gray-500 mt-1">${w.forms.base} / ${w.forms.past} / ${w.forms.participle}</div>` : ''}
           </div>
-          <button onclick="deleteWord(${w.id})" class="ml-4 text-red-400 hover:text-red-600 p-2">
+          <button onclick="deleteWord('${w.id}')" class="ml-4 text-red-400 hover:text-red-600 p-2">
             <i class="fas fa-trash"></i>
           </button>
         </div>
@@ -366,7 +483,7 @@
     }
 
     function showWordDetail(id) {
-      const w = words.find(x => x.id === id);
+      const w = words.find(x => x.id == id);
       if (w) {
         showTab('add');
         document.getElementById('word-input').value = w.word;
@@ -374,13 +491,15 @@
       }
     }
 
-    function deleteWord(id) {
-      if (confirm('Удалить слово из копилки?')) {
-        words = words.filter(w => w.id !== id);
-        localStorage.setItem('wordBank', JSON.stringify(words));
-        updateWordCount();
-        renderBank();
+    async function deleteWord(id) {
+      if (!confirm('Удалить слово из копилки?')) return;
+      if (currentUser) {
+        const { doc, deleteDoc, db } = window.firebase;
+        await deleteDoc(doc(db, 'words', id));
       }
+      words = words.filter(w => w.id != id);
+      updateWordCount();
+      renderBank();
     }
 
     function exportWords() {
@@ -395,12 +514,16 @@
       const file = e.target.files[0];
       if (!file) return;
       const reader = new FileReader();
-      reader.onload = function(ev) {
+      reader.onload = async function(ev) {
         try {
           const imported = JSON.parse(ev.target.result);
           if (Array.isArray(imported)) {
-            words = imported;
-            localStorage.setItem('wordBank', JSON.stringify(words));
+            for (const w of imported) {
+              if (currentUser) await saveWordToCloud(w);
+              else words.push(w);
+            }
+            if (!currentUser) localStorage.setItem('wordBank', JSON.stringify(words));
+            else await loadWordsFromCloud();
             updateWordCount();
             renderBank();
             alert(`Импортировано ${imported.length} слов!`);
@@ -412,7 +535,6 @@
       reader.readAsText(file);
     }
 
-    // ========== Learn ==========
     function startLearning() {
       const content = document.getElementById('learn-content');
       if (words.length === 0) {
@@ -425,6 +547,9 @@
 
     function showFlashcard() {
       const w = words[currentLearnIndex % words.length];
+      reviews[w.word] = (reviews[w.word] || 0) + 1;
+      localStorage.setItem('wordReviews', JSON.stringify(reviews));
+
       const content = document.getElementById('learn-content');
       content.innerHTML = `
         <div class="mb-6">
@@ -460,20 +585,38 @@
       `;
     }
 
-    function nextCard() {
-      currentLearnIndex++;
-      showFlashcard();
-    }
+    function nextCard() { currentLearnIndex++; showFlashcard(); }
+    function prevCard() { currentLearnIndex = Math.max(0, currentLearnIndex - 1); showFlashcard(); }
+    function shuffleAndStart() { words = words.sort(() => Math.random() - 0.5); currentLearnIndex = 0; showFlashcard(); }
 
-    function prevCard() {
-      currentLearnIndex = Math.max(0, currentLearnIndex - 1);
-      showFlashcard();
-    }
+    function renderStats() {
+      const total = words.length;
+      const verbs = words.filter(w => w.forms).length;
+      const irregular = words.filter(w => w.forms && w.forms.type === 'неправильный').length;
+      const today = new Date().toISOString().slice(0, 10);
+      const todayCount = words.filter(w => w.addedAt && w.addedAt.startsWith(today)).length;
+      const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      const weekCount = words.filter(w => w.addedAt && w.addedAt >= weekAgo).length;
+      const totalReviews = Object.values(reviews).reduce((a, b) => a + b, 0);
+      const reviewedWords = Object.keys(reviews).length;
 
-    function shuffleAndStart() {
-      words = words.sort(() => Math.random() - 0.5);
-      currentLearnIndex = 0;
-      showFlashcard();
+      const stats = [
+        { icon: 'fa-book', label: 'Всего слов', value: total, color: 'indigo' },
+        { icon: 'fa-exchange-alt', label: 'Глаголов', value: verbs, color: 'purple' },
+        { icon: 'fa-exclamation-triangle', label: 'Неправильных', value: irregular, color: 'orange' },
+        { icon: 'fa-calendar-day', label: 'Добавлено сегодня', value: todayCount, color: 'green' },
+        { icon: 'fa-calendar-week', label: 'За 7 дней', value: weekCount, color: 'blue' },
+        { icon: 'fa-eye', label: 'Всего просмотров', value: totalReviews, color: 'pink' },
+        { icon: 'fa-check-circle', label: 'Слов повторено', value: reviewedWords, color: 'teal' }
+      ];
+
+      document.getElementById('stats-content').innerHTML = stats.map(s => `
+        <div class="bg-${s.color}-50 border border-${s.color}-100 rounded-xl p-5 text-center">
+          <i class="fas ${s.icon} text-3xl text-${s.color}-600 mb-2"></i>
+          <div class="text-3xl font-bold text-gray-800">${s.value}</div>
+          <div class="text-sm text-gray-600 mt-1">${s.label}</div>
+        </div>
+      `).join('');
     }
   </script>
 </body>
