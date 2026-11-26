@@ -392,15 +392,21 @@
         if (words.some(w => w.word === word)) {
           result.innerHTML = `<div class="bg-yellow-50 border border-yellow-200 text-yellow-800 p-4 rounded-xl">Это слово уже есть в копилке!</div>`;
         } else {
-          if (currentUser) {
-            await saveWordToCloud(wordObj);
-          } else {
-            wordObj.id = Date.now();
-            localStorage.setItem('wordBank', JSON.stringify(words));
-          }
+          // Сначала добавляем локально, чтобы сразу показалось
+          wordObj.id = Date.now().toString();
           words.push(wordObj);
           updateWordCount();
           renderResult(wordObj, true);
+
+          // Потом пытаемся сохранить в облако (не блокируем)
+          if (currentUser) {
+            saveWordToCloud(wordObj).catch(err => {
+              console.warn('Не удалось сохранить в облако:', err);
+              // Можно показать маленькое уведомление
+            });
+          } else {
+            localStorage.setItem('wordBank', JSON.stringify(words));
+          }
         }
       } catch (err) {
         result.innerHTML = `<div class="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl">
