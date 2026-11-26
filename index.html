@@ -318,13 +318,22 @@
       btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Ищу...';
       result.innerHTML = '<div class="text-center py-8 text-gray-400"><i class="fas fa-spinner fa-spin text-3xl"></i></div>';
 
+      const timeout = (ms) => new Promise((_, reject) => setTimeout(() => reject(new Error('Слишком долго, попробуй ещё раз')), ms));
+
       try {
-        const dictRes = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`);
+        // Параллельные запросы с таймаутом 8 секунд
+        const [dictRes, translateRes] = await Promise.race([
+          Promise.all([
+            fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`),
+            fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=ru&dt=t&q=${encodeURIComponent(word)}`)
+          ]),
+          timeout(8000)
+        ]);
+
         if (!dictRes.ok) throw new Error('Слово не найдено');
         const dictData = await dictRes.json();
         const entry = dictData[0];
 
-        const translateRes = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=ru&dt=t&q=${encodeURIComponent(word)}`);
         const translateData = await translateRes.json();
         const translation = translateData[0][0][0];
 
@@ -349,7 +358,10 @@
         let exampleRu = '';
         if (example) {
           try {
-            const exRes = await fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=ru&dt=t&q=${encodeURIComponent(example)}`);
+            const exRes = await Promise.race([
+              fetch(`https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=ru&dt=t&q=${encodeURIComponent(example)}`),
+              timeout(5000)
+            ]);
             const exData = await exRes.json();
             exampleRu = exData[0][0][0];
           } catch(e) {}
