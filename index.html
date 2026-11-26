@@ -409,8 +409,11 @@
           }
         }
       } catch (err) {
+        console.error('Add word error:', err);
         result.innerHTML = `<div class="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl">
-          <i class="fas fa-exclamation-circle mr-2"></i>${err.message || 'Ошибка. Попробуй другое слово.'}
+          <i class="fas fa-exclamation-circle mr-2"></i>
+          ${err.message || 'Ошибка сети. Попробуй ещё раз или обнови страницу.'}
+          <br><small class="text-xs opacity-75">Если сидишь в аккаунте — попробуй выйти и зайти снова.</small>
         </div>`;
       } finally {
         btn.disabled = false;
