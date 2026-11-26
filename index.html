@@ -6,27 +6,6 @@
   <title>Копилка Английских Слов</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-    import { getFirestore, doc, setDoc, getDoc, collection, addDoc, query, where, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
-    const firebaseConfig = {
-      apiKey: "AIzaSyAzJ_cJTt82L7-PQwqgSVVKHaTAWRQvq54",
-      authDomain: "word-bank-52.firebaseapp.com",
-      projectId: "word-bank-52",
-      storageBucket: "word-bank-52.firebasestorage.app",
-      messagingSenderId: "91026109506",
-      appId: "1:91026109506:web:087fb4b9b9c6c72a93e9db",
-      measurementId: "G-PQJJVW88LB"
-    };
-
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
-
-    window.firebase = { auth, db, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, doc, setDoc, getDoc, collection, addDoc, query, where, getDocs, deleteDoc };
-  </script>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
     body { font-family: 'Inter', sans-serif; transition: background 0.3s, color 0.3s; }
@@ -51,12 +30,10 @@
   </style>
 </head>
 <body class="bg-gradient-to-br from-indigo-50 via-white to-purple-50 min-h-screen">
-  <!-- Side Panel Button -->
   <button onclick="togglePanel()" class="fixed top-6 right-6 z-40 w-14 h-14 bg-indigo-600 text-white rounded-full shadow-lg hover:bg-indigo-700 flex items-center justify-center text-xl">
     <i class="fas fa-bars"></i>
   </button>
 
-  <!-- Side Panel -->
   <div id="side-panel" class="side-panel fixed top-0 right-0 h-full w-80 bg-white shadow-2xl z-50 p-6 overflow-y-auto border-l">
     <div class="flex justify-between items-center mb-6">
       <h2 class="text-xl font-bold">Настройки</h2>
@@ -66,13 +43,13 @@
     <div id="panel-auth" class="mb-8">
       <div id="auth-logged-out">
         <h3 class="font-semibold mb-3">Аккаунт</h3>
-        <input id="auth-email" type="email" placeholder="Email" class="w-full px-3 py-2 border rounded-lg mb-2 text-sm">
+        <input id="auth-login" type="text" placeholder="Логин" class="w-full px-3 py-2 border rounded-lg mb-2 text-sm">
         <input id="auth-password" type="password" placeholder="Пароль" class="w-full px-3 py-2 border rounded-lg mb-3 text-sm">
         <button onclick="handleAuth(false)" class="w-full bg-indigo-600 text-white py-2 rounded-lg text-sm mb-2">Войти</button>
         <button onclick="handleAuth(true)" class="w-full bg-gray-200 py-2 rounded-lg text-sm">Зарегистрироваться</button>
       </div>
       <div id="auth-logged-in" class="hidden">
-        <p class="text-sm mb-3">Вошли как:<br><strong id="user-email"></strong></p>
+        <p class="text-sm mb-3">Вошли как:<br><strong id="user-login"></strong></p>
         <button onclick="logout()" class="w-full bg-red-500 text-white py-2 rounded-lg text-sm">Выйти</button>
       </div>
     </div>
@@ -85,11 +62,10 @@
       </div>
     </div>
 
-    <p class="text-xs text-gray-400 mt-10">Копилка Слов • v2</p>
+    <p class="text-xs text-gray-400 mt-10">Копилка Слов • v3 (без Firebase)</p>
   </div>
 
   <div class="max-w-5xl mx-auto px-4 py-8">
-    <!-- Header -->
     <header class="text-center mb-10">
       <h1 class="text-4xl md:text-5xl font-bold text-indigo-700 mb-2">
         <i class="fas fa-piggy-bank mr-3"></i>Копилка Слов
@@ -97,7 +73,6 @@
       <p class="text-gray-600 text-lg">Добавляй английские слова → получай перевод, формы и примеры → учись!</p>
     </header>
 
-    <!-- Tabs -->
     <div class="flex flex-wrap justify-center gap-2 mb-8">
       <button onclick="showTab('add')" id="tab-add" class="tab-btn px-6 py-3 rounded-full font-medium bg-indigo-600 text-white shadow-md">
         <i class="fas fa-plus mr-2"></i>Добавить
@@ -113,7 +88,6 @@
       </button>
     </div>
 
-    <!-- Add Tab -->
     <div id="section-add" class="tab-section">
       <div class="bg-white rounded-2xl shadow-lg p-6 md:p-8 max-w-2xl mx-auto">
         <h2 class="text-2xl font-semibold text-gray-800 mb-6">Добавить новое слово</h2>
@@ -129,7 +103,6 @@
       </div>
     </div>
 
-    <!-- Bank Tab -->
     <div id="section-bank" class="tab-section hidden">
       <div class="bg-white rounded-2xl shadow-lg p-6">
         <div class="flex justify-between items-center mb-6">
@@ -155,7 +128,6 @@
       </div>
     </div>
 
-    <!-- Learn Tab -->
     <div id="section-learn" class="tab-section hidden">
       <div class="bg-white rounded-2xl shadow-lg p-6 md:p-8">
         <h2 class="text-2xl font-semibold text-gray-800 mb-6 text-center">Режим обучения</h2>
@@ -163,7 +135,6 @@
       </div>
     </div>
 
-    <!-- Stats Tab -->
     <div id="section-stats" class="tab-section hidden">
       <div class="bg-white rounded-2xl shadow-lg p-6 md:p-8">
         <h2 class="text-2xl font-semibold text-gray-800 mb-6 text-center">Статистика</h2>
@@ -203,7 +174,13 @@
     window.addEventListener('load', () => {
       const savedTheme = localStorage.getItem('theme') || 'light';
       setTheme(savedTheme);
-      setTimeout(initAuth, 500);
+      const savedUser = localStorage.getItem('currentUser');
+      if (savedUser) {
+        currentUser = savedUser;
+        updateAuthUI();
+        loadUserWords();
+      }
+      updateWordCount();
     });
 
     function togglePanel() {
@@ -221,70 +198,75 @@
       localStorage.setItem('theme', theme);
     }
 
-    function initAuth() {
-      if (!window.firebase) return setTimeout(initAuth, 200);
-      const { onAuthStateChanged, auth } = window.firebase;
-      onAuthStateChanged(auth, async (user) => {
-        currentUser = user;
-        updateAuthUI();
-        if (user) {
-          await loadWordsFromCloud();
-        } else {
-          words = JSON.parse(localStorage.getItem('wordBank') || '[]');
-          reviews = JSON.parse(localStorage.getItem('wordReviews') || '{}');
-        }
-        updateWordCount();
-        if (document.getElementById('section-bank') && !document.getElementById('section-bank').classList.contains('hidden')) renderBank();
-      });
+    function getUsers() {
+      return JSON.parse(localStorage.getItem('users') || '{}');
+    }
+
+    function saveUsers(users) {
+      localStorage.setItem('users', JSON.stringify(users));
     }
 
     function updateAuthUI() {
       if (currentUser) {
         document.getElementById('auth-logged-out').classList.add('hidden');
         document.getElementById('auth-logged-in').classList.remove('hidden');
-        document.getElementById('user-email').textContent = currentUser.email;
+        document.getElementById('user-login').textContent = currentUser;
       } else {
         document.getElementById('auth-logged-out').classList.remove('hidden');
         document.getElementById('auth-logged-in').classList.add('hidden');
       }
     }
 
-    async function handleAuth(register) {
-      const email = document.getElementById('auth-email').value.trim();
+    function handleAuth(register) {
+      const login = document.getElementById('auth-login').value.trim().toLowerCase();
       const password = document.getElementById('auth-password').value;
-      if (!email || !password) return alert('Заполни все поля');
-      try {
-        const { createUserWithEmailAndPassword, signInWithEmailAndPassword, auth } = window.firebase;
-        if (register) {
-          await createUserWithEmailAndPassword(auth, email, password);
-        } else {
-          await signInWithEmailAndPassword(auth, email, password);
-        }
-        togglePanel();
-      } catch (e) {
-        alert('Ошибка: ' + e.message);
+      if (!login || !password) return alert('Заполни логин и пароль');
+      if (password.length < 4) return alert('Пароль минимум 4 символа');
+
+      const users = getUsers();
+
+      if (register) {
+        if (users[login]) return alert('Такой логин уже есть');
+        users[login] = { password, words: [] };
+        saveUsers(users);
+        currentUser = login;
+        localStorage.setItem('currentUser', login);
+        words = [];
+        alert('Аккаунт создан!');
+      } else {
+        if (!users[login] || users[login].password !== password) return alert('Неверный логин или пароль');
+        currentUser = login;
+        localStorage.setItem('currentUser', login);
+        words = users[login].words || [];
       }
+      updateAuthUI();
+      updateWordCount();
+      togglePanel();
+      document.getElementById('auth-login').value = '';
+      document.getElementById('auth-password').value = '';
     }
 
-    async function logout() {
-      await window.firebase.signOut(window.firebase.auth);
+    function logout() {
+      currentUser = null;
+      localStorage.removeItem('currentUser');
+      words = [];
+      updateAuthUI();
+      updateWordCount();
       togglePanel();
     }
 
-    async function loadWordsFromCloud() {
+    function loadUserWords() {
       if (!currentUser) return;
-      const { collection, query, where, getDocs, db } = window.firebase;
-      const q = query(collection(db, 'words'), where('uid', '==', currentUser.uid));
-      const snap = await getDocs(q);
-      words = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      reviews = {};
+      const users = getUsers();
+      words = users[currentUser]?.words || [];
     }
 
-    async function saveWordToCloud(wordObj) {
+    function saveUserWords() {
       if (!currentUser) return;
-      const { collection, addDoc, db } = window.firebase;
-      const docRef = await addDoc(collection(db, 'words'), { ...wordObj, uid: currentUser.uid });
-      wordObj.id = docRef.id;
+      const users = getUsers();
+      if (!users[currentUser]) users[currentUser] = { password: '', words: [] };
+      users[currentUser].words = words;
+      saveUsers(users);
     }
 
     function showTab(tab) {
@@ -321,7 +303,6 @@
       const timeout = (ms) => new Promise((_, reject) => setTimeout(() => reject(new Error('Слишком долго, попробуй ещё раз')), ms));
 
       try {
-        // Параллельные запросы с таймаутом 8 секунд
         const [dictRes, translateRes] = await Promise.race([
           Promise.all([
             fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`),
@@ -378,6 +359,7 @@
         }
 
         const wordObj = {
+          id: Date.now(),
           word,
           translation,
           phonetic,
@@ -392,28 +374,15 @@
         if (words.some(w => w.word === word)) {
           result.innerHTML = `<div class="bg-yellow-50 border border-yellow-200 text-yellow-800 p-4 rounded-xl">Это слово уже есть в копилке!</div>`;
         } else {
-          // Сначала добавляем локально, чтобы сразу показалось
-          wordObj.id = Date.now().toString();
           words.push(wordObj);
+          if (currentUser) saveUserWords();
+          else localStorage.setItem('wordBank_guest', JSON.stringify(words));
           updateWordCount();
           renderResult(wordObj, true);
-
-          // Потом пытаемся сохранить в облако (не блокируем)
-          if (currentUser) {
-            saveWordToCloud(wordObj).catch(err => {
-              console.warn('Не удалось сохранить в облако:', err);
-              // Можно показать маленькое уведомление
-            });
-          } else {
-            localStorage.setItem('wordBank', JSON.stringify(words));
-          }
         }
       } catch (err) {
-        console.error('Add word error:', err);
         result.innerHTML = `<div class="bg-red-50 border border-red-200 text-red-700 p-4 rounded-xl">
-          <i class="fas fa-exclamation-circle mr-2"></i>
-          ${err.message || 'Ошибка сети. Попробуй ещё раз или обнови страницу.'}
-          <br><small class="text-xs opacity-75">Если сидишь в аккаунте — попробуй выйти и зайти снова.</small>
+          <i class="fas fa-exclamation-circle mr-2"></i>${err.message || 'Ошибка. Попробуй другое слово.'}
         </div>`;
       } finally {
         btn.disabled = false;
@@ -489,14 +458,14 @@
 
       list.innerHTML = filtered.map(w => `
         <div class="card bg-white border border-gray-200 rounded-xl p-4 flex items-center justify-between hover:border-indigo-300">
-          <div class="flex-1 cursor-pointer" onclick="showWordDetail('${w.id}')">
+          <div class="flex-1 cursor-pointer" onclick="showWordDetail(${w.id})">
             <div class="flex items-center gap-3">
               <div class="text-xl font-semibold text-gray-800">${w.word}</div>
               <div class="text-indigo-600 font-medium">${w.translation}</div>
             </div>
             ${w.forms ? `<div class="text-xs text-gray-500 mt-1">${w.forms.base} / ${w.forms.past} / ${w.forms.participle}</div>` : ''}
           </div>
-          <button onclick="deleteWord('${w.id}')" class="ml-4 text-red-400 hover:text-red-600 p-2">
+          <button onclick="deleteWord(${w.id})" class="ml-4 text-red-400 hover:text-red-600 p-2">
             <i class="fas fa-trash"></i>
           </button>
         </div>
@@ -512,13 +481,11 @@
       }
     }
 
-    async function deleteWord(id) {
+    function deleteWord(id) {
       if (!confirm('Удалить слово из копилки?')) return;
-      if (currentUser) {
-        const { doc, deleteDoc, db } = window.firebase;
-        await deleteDoc(doc(db, 'words', id));
-      }
       words = words.filter(w => w.id != id);
+      if (currentUser) saveUserWords();
+      else localStorage.setItem('wordBank_guest', JSON.stringify(words));
       updateWordCount();
       renderBank();
     }
@@ -535,16 +502,13 @@
       const file = e.target.files[0];
       if (!file) return;
       const reader = new FileReader();
-      reader.onload = async function(ev) {
+      reader.onload = function(ev) {
         try {
           const imported = JSON.parse(ev.target.result);
           if (Array.isArray(imported)) {
-            for (const w of imported) {
-              if (currentUser) await saveWordToCloud(w);
-              else words.push(w);
-            }
-            if (!currentUser) localStorage.setItem('wordBank', JSON.stringify(words));
-            else await loadWordsFromCloud();
+            words = imported;
+            if (currentUser) saveUserWords();
+            else localStorage.setItem('wordBank_guest', JSON.stringify(words));
             updateWordCount();
             renderBank();
             alert(`Импортировано ${imported.length} слов!`);
